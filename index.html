@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:v-on="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="UTF-8">
+    <title>Network frontend</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+</head>
+<body>
+<div id="app">
+    <div v-if="!image">
+        <h2>Select an image</h2>
+        <input type="file" @change="onFileChange">
+    </div>
+    <div v-else>
+        <img :src="image" style="width:300px;height:200px"/>
+        <button @click="removeImage">Remove image</button>
+    </div>
+</div>
+<div id="test">
+    <button v-on:click="counter += 1">Add 1</button>
+    <p>The button has been clicked {{counter}} times</p>
+</div>
+<div id="train">
+    <form action="/" method="post">
+        <input class="btn" type="submit" value="Træn">
+    </form>
+</div>
+<script src="VueBackEnd.js"></script>
+<script src="index.js"></script>
+</body>
+</html>
