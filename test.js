@@ -11,24 +11,50 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 let jimp = require('jimp');
 let tf = require("@tensorflow/tfjs");
-//require("@tensorflow/tfjs-node");
+let fs = require("fs");
+require("@tensorflow/tfjs-node");
 let labels = [];
 let testLabels = [];
+//let network;
 function start() {
     return __awaiter(this, void 0, void 0, function* () {
         let test = yield trainingSetPrep();
         //console.log(test);
         let trainingData = yield tf.tensor4d(test);
         let network = yield createModel();
-        let test2 = yield testSetPrep();
-        let testData = yield tf.tensor4d(test2);
         yield train(network, trainingData);
-        yield runTest(network, testData);
+        //network = await tf.loadModel("localstorage://my-model-1");
     });
 }
 exports.start = start;
+function testing() {
+    return __awaiter(this, void 0, void 0, function* () {
+        let test2 = yield testSetPrep();
+        let testData = yield tf.tensor4d(test2);
+        //await runTest(network, testData);
+    });
+}
+exports.testing = testing;
+function noPost() {
+    return __awaiter(this, void 0, void 0, function* () {
+        let test = yield trainingSetPrep();
+        //console.log(test);
+        let trainingData = yield tf.tensor4d(test);
+        let network = yield createModel();
+        yield train(network, trainingData);
+        //network = await tf.loadModel("localstorage://my-model-1");
+        let test2 = yield testSetPrep();
+        let testData = tf.tidy(() => {
+            let x = tf.tensor4d(test2);
+            return x;
+        });
+        yield runTest(network, testData);
+    });
+}
+exports.noPost = noPost;
 function imageHandler(path) {
     return new Promise(resolve => {
+        //console.log(path);
         jimp.read(path, (err, imge) => {
             imge
                 .resize(28, 28)
@@ -66,9 +92,10 @@ function createModel() {
     model.add(tf.layers.conv2d({
         inputShape: [28, 28, 3],
         kernelSize: 5,
-        filters: 8,
+        filters: 20,
         strides: 1,
         activation: 'relu',
+        useBias: true,
         kernelInitializer: 'VarianceScaling'
     }));
     //create a max pooling layer
@@ -79,9 +106,10 @@ function createModel() {
     //create the second conv layer
     model.add(tf.layers.conv2d({
         kernelSize: 5,
-        filters: 16,
+        filters: 20,
         strides: 1,
         activation: 'relu',
+        useBias: true,
         kernelInitializer: 'VarianceScaling'
     }));
     //create a max pooling layer
@@ -97,22 +125,21 @@ function createModel() {
         kernelInitializer: 'VarianceScaling',
         activation: 'softmax'
     }));
-    const LEARNING_RATE = 0.0001;
-    const optimizer = tf.train.sgd(LEARNING_RATE);
+    //const LEARNING_RATE = 0.0001;
+    const optimizer = tf.train.sgd(0.001);
     model.compile({
         optimizer: optimizer,
-        loss: 'categoricalCrossentropy',
-        metrics: ['accuracy'],
+        loss: 'categoricalCrossentropy'
     });
     return model;
 }
 function trainingSetPrep() {
     return __awaiter(this, void 0, void 0, function* () {
         let pixelsOfAllImages = [];
-        for (let i = 0; i < 9; i++) {
-            var tv = yield imageHandler("Pictures/Training/Tvs/tv" + (i + 1) + ".jpg");
-            var dog = yield imageHandler("Pictures/Training/Dogs/dog" + (i + 1) + ".jpg");
-            pixelsOfAllImages.push(tv);
+        for (let i = 0; i < 200; i++) {
+            let cat = yield imageHandler("Pictures/training_set/cats/cat." + (i + 1).toString() + ".jpg");
+            let dog = yield imageHandler("Pictures/training_set/dogs/dog." + (i + 1).toString() + ".jpg");
+            pixelsOfAllImages.push(cat);
             labels.push(0);
             pixelsOfAllImages.push(dog);
             labels.push(1);
@@ -128,18 +155,29 @@ function trainingSetPrep() {
 function testSetPrep() {
     return __awaiter(this, void 0, void 0, function* () {
         let pixelsOfAllImages = [];
-        let fixLater = 1;
-        for (let i = 0; i < 3; i++) {
-            var test = yield imageHandler("Pictures/Testing/test" + (i + 1) + ".jpg");
-            pixelsOfAllImages.push(test);
-            if (fixLater == 0) {
-                testLabels.push(0);
-            }
-            else {
-                testLabels.push(1);
-            }
-            fixLater = 0;
+        for (let i = 0; i < 10; i++) {
+            let cat = yield imageHandler("Pictures/test_set/cats/cat." + (i + 4001).toString() + ".jpg");
+            let dog = yield imageHandler("Pictures/test_set/dogs/dog." + (i + 4001).toString() + ".jpg");
+            pixelsOfAllImages.push(cat);
+            testLabels.push(0);
+            pixelsOfAllImages.push(dog);
+            testLabels.push(1);
         }
+        //console.log(image);
+        /*let imageBuffer = await Buffer.from(image, "base64");
+        console.log(imageBuffer);
+        let read = new fs.readFileSync("Pictures/Testing/test1.jpg",function (err, data) {
+            //if (err) throw err;
+            //console.log(data);
+        });
+        console.log(read);
+        new fs.writeFileSync("imageTest.jpg", imageBuffer, function (err) {
+            if (err) throw err;
+            console.log("File saved");
+        })
+        let test = await imageHandler(image);
+        pixelsOfAllImages.push(test);
+        testLabels.push(1);*/
         return pixelsOfAllImages;
     });
 }
@@ -147,19 +185,21 @@ function train(network, data) {
     return __awaiter(this, void 0, void 0, function* () {
         let labelData = yield tf.oneHot(tf.tensor1d(labels, "int32"), 2);
         yield network.fit(data, labelData, {
-            batchSize: 4,
-            epochs: 3,
+            batchSize: 10,
+            epochs: 20,
             shuffle: true,
             validationSplit: 0.05
         }).then(results => {
             console.log(results);
         });
+        //network.save("localstorage://my-model-1");
     });
 }
 function runTest(model, data) {
     return __awaiter(this, void 0, void 0, function* () {
         let labelData = yield tf.oneHot(tf.tensor1d(testLabels, "int32"), 2);
         let prediction = yield model.predict(data);
+        prediction.print();
         let values = yield prediction.argMax(1).dataSync();
         console.log(values);
         for (let i = 0; i < values.length; i++) {
