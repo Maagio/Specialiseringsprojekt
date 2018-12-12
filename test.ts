@@ -1,25 +1,50 @@
 //import {promises} from "fs";
 
+import * as buffer from "buffer";
+
 let jimp = require('jimp');
 let tf = require("@tensorflow/tfjs")
-//require("@tensorflow/tfjs-node");
+let fs = require("fs");
+require("@tensorflow/tfjs-node");
 
 let labels = [];
 let testLabels = [];
+//let network;
 
 export async function start() {
     let test = await trainingSetPrep();
     //console.log(test);
     let trainingData = await tf.tensor4d(test);
     let network = await createModel();
+    await train(network, trainingData);
+    //network = await tf.loadModel("localstorage://my-model-1");
+}
+
+export async function testing() {
     let test2 = await testSetPrep();
     let testData = await tf.tensor4d(test2);
+    //await runTest(network, testData);
+}
+
+export async function noPost() {
+    let test = await trainingSetPrep();
+    //console.log(test);
+    let trainingData = await tf.tensor4d(test);
+    let network = await createModel();
     await train(network, trainingData);
+    //network = await tf.loadModel("localstorage://my-model-1");
+    let test2 = await testSetPrep();
+
+    let testData = tf.tidy(() => {
+        let x = tf.tensor4d(test2);
+        return x;
+    });
     await runTest(network, testData);
 }
 
 function imageHandler(path) {
     return new Promise(resolve => {
+        //console.log(path);
         jimp.read(path, (err, imge) => {
             imge
                 .resize(28, 28)
@@ -61,9 +86,10 @@ function createModel() {
     model.add(tf.layers.conv2d({
         inputShape: [28, 28, 3],
         kernelSize: 5,
-        filters: 8,
+        filters: 20,
         strides: 1,
         activation: 'relu',
+        useBias: true,
         kernelInitializer: 'VarianceScaling'
     }));
 
@@ -76,9 +102,10 @@ function createModel() {
 //create the second conv layer
     model.add(tf.layers.conv2d({
         kernelSize: 5,
-        filters: 16,
+        filters: 20,
         strides: 1,
         activation: 'relu',
+        useBias: true,
         kernelInitializer: 'VarianceScaling'
     }));
 
@@ -98,12 +125,11 @@ function createModel() {
         activation: 'softmax'
     }));
 
-    const LEARNING_RATE = 0.0001;
-    const optimizer = tf.train.sgd(LEARNING_RATE);
+    //const LEARNING_RATE = 0.0001;
+    const optimizer = tf.train.sgd(0.001);
     model.compile({
         optimizer: optimizer,
-        loss: 'categoricalCrossentropy',
-        metrics: ['accuracy'],
+        loss: 'categoricalCrossentropy'
     });
 
     return model;
@@ -112,10 +138,10 @@ function createModel() {
 
 async function trainingSetPrep() {
     let pixelsOfAllImages = [];
-    for (let i = 0; i < 9; i++) {
-        var tv = await imageHandler("Pictures/Training/Tvs/tv" + (i + 1) + ".jpg");
-        var dog = await imageHandler("Pictures/Training/Dogs/dog" + (i + 1) + ".jpg");
-        pixelsOfAllImages.push(tv);
+    for (let i = 0; i < 200; i++) {
+        let cat = await imageHandler("Pictures/training_set/cats/cat." + (i + 1).toString() + ".jpg");
+        let dog = await imageHandler("Pictures/training_set/dogs/dog." + (i + 1).toString() + ".jpg");
+        pixelsOfAllImages.push(cat);
         labels.push(0);
         pixelsOfAllImages.push(dog);
         labels.push(1);
@@ -130,18 +156,30 @@ async function trainingSetPrep() {
 
 async function testSetPrep() {
     let pixelsOfAllImages = [];
-    let fixLater = 1;
-    for (let i = 0; i < 3; i++) {
-        var test = await imageHandler("Pictures/Testing/test" + (i + 1) + ".jpg");
-        pixelsOfAllImages.push(test);
-        if (fixLater == 0) {
-            testLabels.push(0);
-        }
-        else {
-            testLabels.push(1);
-        }
-        fixLater = 0;
+    for (let i = 0; i < 10; i++) {
+        let cat = await imageHandler("Pictures/test_set/cats/cat." + (i + 4001).toString() + ".jpg");
+        let dog = await imageHandler("Pictures/test_set/dogs/dog." + (i + 4001).toString() + ".jpg");
+        pixelsOfAllImages.push(cat);
+        testLabels.push(0);
+        pixelsOfAllImages.push(dog);
+        testLabels.push(1);
+
     }
+    //console.log(image);
+    /*let imageBuffer = await Buffer.from(image, "base64");
+    console.log(imageBuffer);
+    let read = new fs.readFileSync("Pictures/Testing/test1.jpg",function (err, data) {
+        //if (err) throw err;
+        //console.log(data);
+    });
+    console.log(read);
+    new fs.writeFileSync("imageTest.jpg", imageBuffer, function (err) {
+        if (err) throw err;
+        console.log("File saved");
+    })
+    let test = await imageHandler(image);
+    pixelsOfAllImages.push(test);
+    testLabels.push(1);*/
     return pixelsOfAllImages;
 }
 
@@ -149,19 +187,21 @@ async function train(network, data) {
     let labelData = await tf.oneHot(tf.tensor1d(labels, "int32"), 2);
     await network.fit(
         data, labelData, {
-            batchSize: 4,
-            epochs: 3,
+            batchSize: 10,
+            epochs: 20,
             shuffle: true,
             validationSplit: 0.05
         }
     ).then(results => {
         console.log(results)
     });
+    //network.save("localstorage://my-model-1");
 }
 
 async function runTest(model, data) {
     let labelData = await tf.oneHot(tf.tensor1d(testLabels, "int32"), 2);
     let prediction = await model.predict(data);
+    prediction.print();
     let values = await prediction.argMax(1).dataSync();
     console.log(values);
 
