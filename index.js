@@ -13,18 +13,34 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const test_1 = require("./test");
 let path = require("path");
 let express = require("express");
+let bodyParser = require("body-parser");
 let logger = require("morgan");
 let app = express();
 app.use(logger("dev"));
 app.use(express.static(path.join(__dirname)));
+app.use(bodyParser.json({ limit: "10mb", extended: true }));
+app.use(bodyParser.urlencoded({ limit: "10mb", extended: true }));
 app.get("/", function (req, res) {
     res.sendFile("index.html", { root: __dirname });
 });
-app.post("/", function (req, res) {
+app.post("/training", function (req, res) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            console.log(req.body);
+            console.log("Træning begyndt");
             yield test_1.start();
+            console.log("Træning fuldført");
+        }
+        catch (e) {
+            console.log(e.message);
+        }
+    });
+});
+app.post("/testing", function (req, res) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            console.log("Testing påbegyndt");
+            //console.log(req.body.image);
+            yield test_1.testing();
         }
         catch (e) {
             console.log(e.message);
@@ -33,5 +49,4 @@ app.post("/", function (req, res) {
 });
 app.listen(3000);
 console.log("listening on port 3000");
-//start();
 //# sourceMappingURL=index.js.map
