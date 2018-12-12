@@ -4,27 +4,34 @@
     <meta charset="UTF-8">
     <title>Network frontend</title>
     <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue-resource@1.5.1"></script>
 </head>
-<body>
-<div id="app">
+<header style="background-color:darkslateblue;">
+    <p style="text-align:center;font-size:300%;">Jesper specialiserings projekt</p>
+</header>
+<body style="background-color: cornflowerblue">
+<div id="app" align="center">
     <div v-if="!image">
-        <h2>Select an image</h2>
+        <h2>Vælg et billede</h2>
         <input type="file" @change="onFileChange">
     </div>
     <div v-else>
         <img :src="image" style="width:300px;height:200px"/>
-        <button @click="removeImage">Remove image</button>
+        <button @click="removeImage">Fjern billede</button>
+    </div>
+    <div>
+        <br>
+        <input type="submit" value="Træn netværk" v-on:click.prevent="train"></input><br>
+        <br>
+        <input type="submit" value="Test netværk" v-on:click.prevent="test"></input>
     </div>
 </div>
-<div id="test">
-    <button v-on:click="counter += 1">Add 1</button>
-    <p>The button has been clicked {{counter}} times</p>
-</div>
-<div id="train">
-    <form action="/" method="post">
-        <input class="btn" type="submit" value="Træn">
-    </form>
-</div>
+<iframe
+        width="350"
+        height="430"
+        align="right"
+        src="https://console.dialogflow.com/api-client/demo/embedded/6aaceda6-23a3-452b-9016-8d81e87399e9">
+</iframe>
 <script src="VueBackEnd.js"></script>
 <script src="index.js"></script>
 </body>
